@@ -84,7 +84,7 @@ def xor_network():
 
             optimizer = optim.SGD(model.parameters(), lr=0.02, momentum=0.9)
 
-            epochs = 2001
+            epochs = 2000
             loss_history = []
             accuracy_history = []
 
@@ -107,13 +107,7 @@ def xor_network():
 
                 accuracy_history.append(accuracy.item())
 
-                if i % 500 == 0:
-                    if i == 0:
-                        print(title_mapping.get((activation_id, loss_id)))
-                        print("--------------------------------------")
-                    print("Epoch: {0}, Loss: {1}, Accuracy: {2}".format(i, loss.item(), accuracy.item()))
-                    if i == 2000:
-                        print()
+                print_results(i, loss.item(), accuracy.item(), activation_id, loss_id)
 
             if accuracy_history[-1] == 1.0:
                 successfulNetworks.append(title_mapping.get((activation_id, loss_id), "Unknown"))
@@ -138,7 +132,8 @@ def xor_network():
             plt.plot(x_2, y_2)
             plt.legend([f"neuron_{i + 1}" for i in range(num_neurons)], loc=8)
 
-            title = title_mapping.get((activation_id, loss_id), "Unknown")
+            title = "XOR Gate with ", title_mapping.get((activation_id, loss_id), "Unknown")
+
             plt.title(title)
 
             plt.subplot(1, 2, 2)
@@ -157,20 +152,6 @@ def xor_network():
 def heart_network():
     print("Heart Disease Identifier")
 
-    # Heart disease identifier model
-    class Heart(nn.Module):
-        def __init__(self, input_dim, output_dim, num_neurons, num_layers):
-            super(Heart, self).__init__()
-            self.layers = nn.ModuleList([nn.Linear(input_dim, num_neurons)])
-            self.layers.extend([nn.Linear(num_neurons, num_neurons) for _ in range(num_layers - 1)])
-            self.lin_out = nn.Linear(num_neurons, output_dim)
-
-        def forward(self, x):
-            for layer in self.layers:
-                x = F.relu(layer(x))
-            x = self.lin_out(x)
-            return x
-
     # Heart disease identifier training
     data = pd.read_csv('heart.csv')
     X = data.drop('target', axis=1)
@@ -183,58 +164,98 @@ def heart_network():
     Y = Y.values
     input_dim = X.shape[1]
 
-    heart_model = Heart(input_dim, 2, 8, 2)
-    heart_loss_func = loss_functions[2]
-    heart_optimizer = optim.Adam(heart_model.parameters(), lr=0.001)
-    heart_num_epochs = 100
-    heart_losses = []
+    # Iterate over activation functions and loss functions
+    for activation_id, activation_func in activation_functions.items():
+        for loss_id, loss_func in loss_functions.items():
+            class Heart(nn.Module):
+                def __init__(self, input_dim, output_dim, num_neurons, num_layers):
+                    super(Heart, self).__init__()
+                    self.layers = nn.ModuleList([nn.Linear(input_dim, num_neurons)])
+                    self.layers.extend([nn.Linear(num_neurons, num_neurons) for _ in range(num_layers - 1)])
+                    self.lin_out = nn.Linear(num_neurons, output_dim)
 
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    Y_tensor = torch.tensor(Y, dtype=torch.long)
+                def forward(self, x):
+                    for layer in self.layers:
+                        x = activation_func(layer(x))
+                    x = self.lin_out(x)
+                    return x
 
-    for epoch in range(heart_num_epochs):
-        heart_optimizer.zero_grad()
-        heart_outputs = heart_model(X_tensor)
-        heart_loss = heart_loss_func(heart_outputs, Y_tensor)
-        heart_loss.backward()
-        heart_optimizer.step()
-        heart_losses.append(heart_loss.item())
+            heart_model = Heart(input_dim, 2, 8, 2)
 
-        if (epoch + 1) % 10 == 0:
-            print(f'Heart Epoch: {epoch + 1}, Loss: {heart_loss.item()}')
+            # Function to initialize model weights
+            def weights_init(model):
+                for m in model.modules():
+                    if isinstance(m, nn.Linear):
+                        m.weight.data.normal_(0, 1)
 
-    # Heart disease identifier predictions
-    heart_predictions = torch.argmax(heart_model(X_tensor), dim=1)
-    heart_correct = (heart_predictions == Y_tensor).sum().item()
-    heart_accuracy = heart_correct / len(Y_tensor) * 100
+            weights_init(heart_model)
 
-    print("\nHeart Disease Identifier Results:")
-    print(f"Predicted: {heart_predictions}")
-    print(f"Target:    {Y_tensor}")
-    print(f"Accuracy:  {heart_accuracy}%")
+            heart_optimizer = optim.Adam(heart_model.parameters(), lr=0.001)
+            heart_loss_func = loss_functions[2]
+            heart_num_epochs = 2000
+            heart_losses = []
+            heart_accuracy = []
 
-    # Plot the loss curves
-    plt.figure(figsize=(12, 6))
-    plt.subplot(1, 1, 1)
-    plt.plot(heart_losses)
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Heart Disease Identifier Loss Curve')
+            X_tensor = torch.tensor(X, dtype=torch.float32)
+            Y_tensor = torch.tensor(Y, dtype=torch.long)
 
-    plt.tight_layout()
-    plt.show()
+            for epoch in range(heart_num_epochs):
+                heart_optimizer.zero_grad()
+                heart_outputs = heart_model(X_tensor)
+                heart_loss = heart_loss_func(heart_outputs, Y_tensor)
+                heart_loss.backward()
+                heart_optimizer.step()
+                heart_losses.append(heart_loss.item())
+                # Heart disease identifier predictions
+                heart_predictions = torch.argmax(heart_model(X_tensor), dim=1)
+                heart_correct = (heart_predictions == Y_tensor).sum().item()
+                heart_accuracy = heart_correct / len(Y_tensor) * 100
 
-    # Plot the Heart dataset
-    plt.scatter(X[:, 0], X[:, 1], c=Y, cmap='coolwarm')
-    plt.xlabel('Feature 1')
-    plt.ylabel('Feature 2')
-    plt.title('Heart Disease Identifier')
-    plt.show()
+                print_results(epoch, heart_loss.item(), heart_accuracy, activation_id, loss_id)
+
+
+
+            print("\nHeart Disease Identifier Results:")
+            print(f"Predicted: {heart_predictions}")
+            print(f"Target:    {Y_tensor}")
+            print(f"Accuracy:  {heart_accuracy}%")
+
+            # Plot the loss curves
+            plt.figure(figsize=(12, 6))
+            plt.subplot(1, 1, 1)
+            plt.plot(heart_losses)
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            title = "Heart Disease Identifier Loss Curve with " + title_mapping.get((activation_id, loss_id), "Unknown")
+            plt.title(title)
+
+            plt.tight_layout()
+            plt.show()
+
+            # Plot the Heart dataset
+            plt.scatter(X[:, 0], X[:, 1], c=Y, cmap='coolwarm')
+            plt.xlabel('Feature 1')
+            plt.ylabel('Feature 2')
+            plt.title('Heart Disease Identifier')
+            plt.show()
+
+    print("Successful Networks For Heart Disease Identifier: ", successfulNetworks)
+    print("\n\n")
+
+
+def print_results(epoch, loss, accuracy, activation_id, loss_id):
+    if epoch % 500 == 0:
+        if epoch == 0:
+            print(title_mapping.get((activation_id, loss_id)))
+            print("--------------------------------------")
+        print("Epoch: {0}, Loss: {1}, Accuracy: {2}".format(epoch, loss, accuracy))
+        if epoch == 2000:
+            print()
 
 
 if user_choice == 1:
     xor_network()
-#uh
+# uh
 elif user_choice == 2:
     heart_network()
 
