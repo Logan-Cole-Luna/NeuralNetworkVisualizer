@@ -45,7 +45,8 @@ title_mapping = {
 num_layers = 2
 num_neurons = 3
 
-successfulNetworks = []
+successfulNetworksXOR = []
+successfulNetworksHeart = []
 
 
 def xor_network():
@@ -110,7 +111,7 @@ def xor_network():
                 print_results(i, loss.item(), accuracy.item(), activation_id, loss_id)
 
             if accuracy_history[-1] == 1.0:
-                successfulNetworks.append(title_mapping.get((activation_id, loss_id), "Unknown"))
+                successfulNetworksXOR.append(title_mapping.get((activation_id, loss_id), "Unknown"))
 
             model_params = list(model.parameters())
             model_weights = model_params[0].data.numpy()
@@ -145,7 +146,7 @@ def xor_network():
             plt.tight_layout()
             plt.show()
 
-    print("Successful Networks For XOR: ", successfulNetworks)
+    print("Successful Networks For XOR: ", successfulNetworksXOR)
     print("\n\n")
 
 
@@ -192,14 +193,14 @@ def heart_network():
 
             heart_optimizer = optim.Adam(heart_model.parameters(), lr=0.001)
             heart_loss_func = loss_functions[2]
-            heart_num_epochs = 2000
+            epoch = 2001
             heart_losses = []
             heart_accuracy = []
 
             X_tensor = torch.tensor(X, dtype=torch.float32)
             Y_tensor = torch.tensor(Y, dtype=torch.long)
 
-            for epoch in range(heart_num_epochs):
+            for epoch in range(epoch):
                 heart_optimizer.zero_grad()
                 heart_outputs = heart_model(X_tensor)
                 heart_loss = heart_loss_func(heart_outputs, Y_tensor)
@@ -213,33 +214,35 @@ def heart_network():
 
                 print_results(epoch, heart_loss.item(), heart_accuracy, activation_id, loss_id)
 
-
+            if heart_accuracy >= 9.0:
+                successfulNetworksHeart.append(title_mapping.get((activation_id, loss_id), "Unknown"))
 
             print("\nHeart Disease Identifier Results:")
             print(f"Predicted: {heart_predictions}")
             print(f"Target:    {Y_tensor}")
             print(f"Accuracy:  {heart_accuracy}%")
 
-            # Plot the loss curves
+            # Plot the loss & accuracy curves
             plt.figure(figsize=(12, 6))
-            plt.subplot(1, 1, 1)
+            plt.subplot(1, 2, 1)
             plt.plot(heart_losses)
+            plt.plot(heart_accuracy)
             plt.xlabel('Epoch')
             plt.ylabel('Loss')
+            plt.legend(["Loss", "Accuracy"], loc="upper right")
             title = "Heart Disease Identifier Loss Curve with " + title_mapping.get((activation_id, loss_id), "Unknown")
             plt.title(title)
 
-            plt.tight_layout()
-            plt.show()
-
             # Plot the Heart dataset
+            plt.subplot(1, 2, 2)
+            plt.tight_layout()
             plt.scatter(X[:, 0], X[:, 1], c=Y, cmap='coolwarm')
             plt.xlabel('Feature 1')
             plt.ylabel('Feature 2')
             plt.title('Heart Disease Identifier')
             plt.show()
 
-    print("Successful Networks For Heart Disease Identifier: ", successfulNetworks)
+    print("Successful Networks For Heart Disease Identifier: ", successfulNetworksHeart)
     print("\n\n")
 
 
